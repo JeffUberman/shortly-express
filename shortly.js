@@ -2,7 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var expressSessions = require('express-session');
+var session = require('express-session');
+var cookieP = require('cookie-parser')
 var bcrypt = require('bcrypt-nodejs');
 
 
@@ -25,8 +26,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 //Require for Sessions
-app.use(expressSessions({"secret": "am i secure?"
-})); //Ignacio thinks this creates cookie automatically
+app.use(cookieP('Secret'));
+app.use(session());
 
 
 
@@ -35,8 +36,8 @@ var salt = bcrypt.genSaltSync(10);
 
 
 //set up checkLogin middleware
-var checkLogin = require('./helpers/checkLogin.js');
-app.use(checkLogin);
+var checkUser = require('./helpers/checkUser.js');
+app.use(checkUser);
 
 
 app.get('/',
@@ -96,7 +97,6 @@ function(req, res) {
 /************************************************************/
 
 app.get('/signup', function(req, res){
-  console.log('rendering signup');
   res.render('signup');
 });
 
@@ -105,21 +105,20 @@ app.post('/signup', function(req, res){
 
     var newUser = req.body;
 
-    new User( {user_name: newUser.username, password: newUser.password }).fetch().then(function(found){
+    new User( {username: newUser.username, password: newUser.password }).fetch().then(function(found){
       if(found){
         res.send(200, found.attributes)
       } else {
         var hash = bcrypt.hashSync(newUser.password, salt);
 
-        var user = new User({ user_name: newUser.username, password: hash});
+        var user = new User({ username: newUser.username, password: hash});
         user.save().then(function(newUser){
           console.log(newUser);
           Users.add(newUser);
-          res.send(200, newUser);
-        })
+          res.redirect('/');
+        });
       }
     });
-    res.render('index');
 });
 
 app.get('/login', function(req, res){
@@ -130,17 +129,23 @@ app.get('/login', function(req, res){
 app.post('/login', function(req, res){
     var loginUser = req.body;
     var hash = bcrypt.hashSync(loginUser.password, salt);
-    new User( {user_name: loginUser.username, password: hash }).fetch().then(function(found){
+    new User( {username: loginUser.username, password: hash }).fetch().then(function(found){
       if(found){
-        console.log("In login", found.attributes);
-        res.send(200);
+        req.session.regenerate(function(){
+          req.session.user = loginUser.username;
+          res.redirect('/');
+        });
       }  else {
         console.log("in login", "ain't found shit");
-        res.send(200);
+        res.redirect('/login');
       }
     });
+});
 
-    res.render('index');
+app.get('/logout', function(req, res){
+  console.log('we are in the logout thing in the server');
+  delete req.session['user'];
+  res.redirect('/');
 });
 
 /************************************************************/
