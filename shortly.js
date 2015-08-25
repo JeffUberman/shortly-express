@@ -2,7 +2,6 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var cookieParser = require('cookie-parser');
 var expressSessions = require('express-session');
 var bcrypt = require('bcrypt-nodejs');
 
@@ -26,9 +25,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 //Require for Sessions
-app.use(cookieParser());
 app.use(expressSessions({"secret": "am i secure?"
-}));
+})); //Ignacio thinks this creates cookie automatically
 
 
 
